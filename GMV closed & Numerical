@@ -1,0 +1,50 @@
+# Assuming hist_cov is already calculated from Indian stocks data
+# 'assets' is a list of the stock symbols used
+
+# Invert the covariance matrix
+hist_cov_inv = np.linalg.inv(hist_cov)
+
+# Create a vector of ones
+one_vec = np.ones(len(assets))
+
+# Compute GMV weights using closed-form formula
+w_gmv = np.dot(hist_cov_inv, one_vec) / (np.dot(one_vec.T, np.dot(hist_cov_inv, one_vec)))
+
+# Convert to DataFrame for readability
+w_gmv_df = pd.DataFrame(data=[w_gmv], columns=assets)
+
+# Annualized standard deviation of GMV portfolio
+stdev_gmv = np.sqrt(np.dot(w_gmv.T, np.dot(hist_cov, w_gmv))) * np.sqrt(250)
+
+# Output
+print("Global Minimum Variance (GMV) Portfolio Weights:")
+print(w_gmv_df)
+print("\nAnnualized Standard Deviation of GMV Portfolio:")
+print(stdev_gmv)
+
+# Suppress cvxopt output
+solvers.options['show_progress'] = False
+
+# Convert covariance matrix to cvxopt format
+P = matrix(hist_cov.values)
+q = matrix(np.zeros((len(assets), 1)))
+
+# Constraints: sum of weights == 1
+A = matrix(1.0, (1, len(assets)))
+b = matrix(1.0)
+
+# Solve for GMV weights
+solution = solvers.qp(P, q, A=A, b=b)
+w_gmv_v2 = np.array(solution['x'])
+
+# Put weights in DataFrame for readability
+w_gmv_df_v2 = pd.DataFrame(w_gmv_v2.T, columns=assets)
+
+# Compute annualized standard deviation
+stdev_gmv_v2 = np.sqrt(np.dot(w_gmv_v2.T, np.dot(hist_cov.values, w_gmv_v2))) * np.sqrt(250)
+
+# Output results
+print("Numerical GMV Portfolio Weights (cvxopt):")
+print(w_gmv_df_v2)
+print("\nAnnualized Volatility (Std Dev) of GMV Portfolio:")
+print(stdev_gmv_v2.item())
