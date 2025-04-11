@@ -38,13 +38,7 @@ Portfolio return and volatility tables
 
 Optimized weights for GMV and Tangency portfolios
 
-📦 Installation
-bash
-Copy
-Edit
-git clone https://github.com/your-username/portfolio-optimization.git
-cd portfolio-optimization
-pip install -r requirements.txt
+
 📘 Usage
 Run the Jupyter notebooks inside the notebooks/ folder to see step-by-step explanations and visualizations.
 
