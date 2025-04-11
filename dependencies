@@ -1,0 +1,7 @@
+jugaad_data:	Fetches historical stock data from NSE India.
+datetime:	Used to define date ranges for fetching data.
+pandas:	Data manipulation and analysis (e.g., DataFrames, indexing).
+numpy:	Numerical operations, especially for array and matrix computations.
+matplotlib.pyplot:	(Though not used in your snippet) Intended for plotting results like the Efficient Frontier.
+cvxopt:	For solving quadratic programming problems in portfolio optimization.
+scipy.optimize:	Provides advanced optimization routines, e.g., minimize() used in tangency portfolio.
