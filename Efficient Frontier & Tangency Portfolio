@@ -157,3 +157,4 @@ print(w_opt_df.round(4))
 print(f"\nExpected Return: {expected_return:.4f}")
 print(f"Expected Risk: {expected_risk:.4f}")
 print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
+
