@@ -1,0 +1,44 @@
+# Convert to numpy arrays
+mu_vec = hist_mean.values.flatten()  # historical mean returns as flat vector
+one_vec = np.ones(len(assets))
+
+# Create matrices for QP
+P = matrix(hist_cov.values)
+q = matrix(np.zeros((len(assets), 1)))
+G = matrix(-np.eye(len(assets)))   # for weight >= 0 constraint
+h = matrix(np.zeros(len(assets)))  # for weight >= 0 constraint
+
+# Efficient frontier settings
+N = 100
+ef_left = float(hist_mean.min().iloc[0])
+ef_right = float(hist_mean.max().iloc[0])
+target_returns = np.linspace(ef_left, ef_right, N)
+
+# A and b for constraint: return = t and weights sum = 1
+ef_returns = []
+ef_risks = []
+
+for t in target_returns:
+    A = matrix(np.vstack([mu_vec, one_vec]))
+    b = matrix([t, 1.0])
+    sol = solvers.qp(P, q, G, h, A, b)
+    w = np.array(sol['x'])
+
+    # Annualized expected return and risk
+    expected_return = float(w.T @ mu_vec) * 250
+    expected_risk = float(np.sqrt(w.T @ hist_cov.values @ w * 250))
+
+    ef_returns.append(expected_return)
+    ef_risks.append(expected_risk)
+
+# Plot efficient frontier
+plt.figure(figsize=(10, 6))
+plt.plot(port_stdevs, port_returns, 'o', markersize=4, alpha=0.5, label='Random Portfolios')
+plt.plot(ef_risks, ef_returns, 'g-', linewidth=2.5, label='Efficient Frontier')
+plt.xlabel('Expected Volatility')
+plt.ylabel('Expected Return')
+plt.title('Efficient Frontier and Random Portfolios')
+plt.legend(loc='best')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
