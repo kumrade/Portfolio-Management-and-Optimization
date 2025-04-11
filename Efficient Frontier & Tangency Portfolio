@@ -1,0 +1,159 @@
+# Convert to numpy arrays
+mu_vec = hist_mean.values.flatten()  # historical mean returns as flat vector
+one_vec = np.ones(len(assets))
+
+# Create matrices for QP
+P = matrix(hist_cov.values)
+q = matrix(np.zeros((len(assets), 1)))
+G = matrix(-np.eye(len(assets)))   # for weight >= 0 constraint
+h = matrix(np.zeros(len(assets)))  # for weight >= 0 constraint
+
+# Efficient frontier settings
+N = 100
+ef_left = float(hist_mean.min().iloc[0])
+ef_right = float(hist_mean.max().iloc[0])
+target_returns = np.linspace(ef_left, ef_right, N)
+
+# A and b for constraint: return = t and weights sum = 1
+ef_returns = []
+ef_risks = []
+
+for t in target_returns:
+    A = matrix(np.vstack([mu_vec, one_vec]))
+    b = matrix([t, 1.0])
+    sol = solvers.qp(P, q, G, h, A, b)
+    w = np.array(sol['x'])
+
+    # Annualized expected return and risk
+    expected_return = float(w.T @ mu_vec) * 250
+    expected_risk = float(np.sqrt(w.T @ hist_cov.values @ w * 250))
+
+    ef_returns.append(expected_return)
+    ef_risks.append(expected_risk)
+
+# Plot efficient frontier
+plt.figure(figsize=(10, 6))
+plt.plot(port_stdevs, port_returns, 'o', markersize=4, alpha=0.5, label='Random Portfolios')
+plt.plot(ef_risks, ef_returns, 'g-', linewidth=2.5, label='Efficient Frontier')
+plt.xlabel('Expected Volatility')
+plt.ylabel('Expected Return')
+plt.title('Efficient Frontier and Random Portfolios')
+plt.legend(loc='best')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+# Clean conversion
+hist_cov_matrix = hist_cov.values
+mu_vec = hist_mean.values.reshape(-1, 1)
+one_vec = np.ones((len(assets), 1))
+
+# CVXOPT matrices
+P = matrix(hist_cov_matrix)
+q = matrix(np.zeros((len(assets), 1)))
+A = matrix(np.hstack((mu_vec, one_vec)).T)
+N = 100
+
+# Safe min and max for historical mean
+ef_left = float(hist_mean.min())
+ef_right = float(hist_mean.max())
+
+# Generate target returns
+target_returns = np.linspace(ef_left, ef_right, N)
+
+# Solve QP for each target return
+optimal_weights = []
+for t in target_returns:
+    b = matrix([t, 1.0])
+    sol = solvers.qp(P, q, A=A, b=b)
+    optimal_weights.append(np.array(sol['x']).flatten())
+
+# Convert list of weight vectors to DataFrame
+transition_data = pd.DataFrame(optimal_weights, columns=assets)
+
+# Plot stackplot for first 50 portfolios
+plt.figure(figsize=(12, 6))
+plt.stackplot(range(50), transition_data.iloc[:50, :].T, labels=assets, alpha=0.85)
+plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1))
+plt.margins(0, 0)
+plt.title('Allocation Transition Matrix (First 50 Efficient Portfolios)')
+plt.xlabel('Portfolio Index (Along Efficient Frontier)')
+plt.ylabel('Asset Weights')
+plt.tight_layout()
+plt.show()
+
+# --- Assumed Predefined ---
+# hist_mean: Series of mean returns
+# hist_cov: Covariance DataFrame
+# assets: List of asset names
+
+# Convert to NumPy arrays
+mu_vec = hist_mean.values.reshape(-1, 1)
+hist_cov_matrix = hist_cov.values
+hist_cov_inv = np.linalg.inv(hist_cov_matrix)
+one_vec = np.ones((len(assets), 1))
+
+# --- Maximum Sharpe Ratio Portfolio ---
+r_f = 0.01  # risk-free rate
+
+# Adjust returns by subtracting risk-free rate per period
+excess_returns = mu_vec - (r_f / 250)
+
+# Optimal weights (closed form)
+numerator = hist_cov_inv @ excess_returns
+denominator = one_vec.T @ hist_cov_inv @ excess_returns
+w_sharpe = numerator / denominator
+
+# Format output
+w_sharpe_df = pd.DataFrame(w_sharpe.T, columns=assets)
+
+# Portfolio return and volatility (annualized)
+mu_sharpe = float(w_sharpe.T @ mu_vec) * 250
+stdev_sharpe = float(np.sqrt(w_sharpe.T @ hist_cov_matrix @ w_sharpe)) * np.sqrt(250)
+sharpe_ratio = (mu_sharpe - r_f) / stdev_sharpe
+
+# --- Output ---
+print("📈 Maximum Sharpe Ratio Portfolio Weights:")
+print(w_sharpe_df.round(4))
+print("\nExpected Annual Return:", round(mu_sharpe, 4))
+print("Expected Annual Volatility:", round(stdev_sharpe, 4))
+print("Sharpe Ratio:", round(sharpe_ratio, 4))
+
+# --- Inputs (make sure these are defined) ---
+# hist_mean: pd.Series of mean daily returns
+# hist_cov: pd.DataFrame of daily covariance matrix
+# r_f: float, risk-free rate (e.g., 0.01)
+# assets: list of asset names
+
+mu_vec = hist_mean.to_numpy().reshape(-1, 1)
+cov_matrix = hist_cov.to_numpy()
+
+# Initial guess (equal weight)
+n = len(mu_vec)
+w_gmv = np.ones(n) / n
+
+# Constraint: weights must sum to 1
+cons = {'type': 'eq', 'fun': lambda w: np.sum(w) - 1}
+
+# Bounds: weights between 0 and 1 (long-only portfolio)
+bounds = tuple((0, 1) for _ in range(n))
+
+# Objective: negative Sharpe ratio
+fun = lambda w: -1 * np.dot(w.T, mu_vec.flatten() * 250 - r_f) / \
+                np.sqrt(np.dot(w.T, np.dot(cov_matrix * 250, w)))
+
+# Optimize
+res = minimize(fun, w_gmv, method='SLSQP', bounds=bounds, constraints=cons)
+
+# Results
+w_opt = res.x
+w_opt_df = pd.DataFrame([w_opt], columns=assets)
+expected_return = float(np.dot(w_opt.T, mu_vec.flatten()) * 250)
+expected_risk = float(np.sqrt(np.dot(w_opt.T, np.dot(cov_matrix, w_opt)) * 250))
+sharpe_ratio = (expected_return - r_f) / expected_risk
+
+# Output
+print("📌 Tangency Portfolio Weights:")
+print(w_opt_df.round(4))
+print(f"\nExpected Return: {expected_return:.4f}")
+print(f"Expected Risk: {expected_risk:.4f}")
+print(f"Sharpe Ratio: {sharpe_ratio:.4f}")
