@@ -31,13 +31,6 @@ portfolio-optimization/
 ├── results/                  # Saved plots and output
 ├── README.md                 # Project documentation
 └── requirements.txt          # Python dependencies
-📊 Sample Output
-Efficient Frontier plot
-
-Portfolio return and volatility tables
-
-Optimized weights for GMV and Tangency portfolios
-
 
 📘 Usage
 Run the Jupyter notebooks inside the notebooks/ folder to see step-by-step explanations and visualizations.
