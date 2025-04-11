@@ -1,0 +1,44 @@
+# Maximum return -- closed form
+mu_o = hist_mean.max().item()   # maximum expected return
+
+mu_vec = np.array(hist_mean).reshape(-1, 1)
+one_vec = np.ones((len(assets), 1))
+hist_cov_inv = np.linalg.inv(hist_cov)
+
+A = np.matrix([
+    [(mu_vec.T @ hist_cov_inv @ mu_vec).item(), (mu_vec.T @ hist_cov_inv @ one_vec).item()],
+    [(mu_vec.T @ hist_cov_inv @ one_vec).item(), (one_vec.T @ hist_cov_inv @ one_vec).item()]
+])
+
+B = np.hstack([mu_vec, one_vec])
+y = np.matrix([mu_o, 1]).T
+
+w_max_ret = hist_cov_inv @ B @ np.linalg.inv(A) @ y
+w_max_ret_df = pd.DataFrame(w_max_ret.T, columns=assets)
+
+print("Maximum Return Portfolio Weights (Closed Form):")
+print(w_max_ret_df)
+
+# Prepare data
+mu_vec = matrix(hist_mean.values)  # Expected returns (N x 1)
+one_vec = matrix(np.ones((len(assets), 1)))  # Vector of ones (N x 1)
+
+# QP inputs
+P = matrix(hist_cov.values)
+q = matrix(np.zeros((len(assets), 1)))
+
+# Define target return: maximum from expected mean returns
+mu_o = float(hist_mean.max().iloc[0]) # Convert scalar safely
+
+# Equality constraint: A * x = b, where A = [mu.T; 1.T]
+A = matrix(np.hstack([hist_mean.values.reshape(-1, 1), np.ones((len(assets), 1))]).T)
+b = matrix([mu_o, 1.0])
+
+# Solve QP
+sol = solvers.qp(P, q, A=A, b=b)
+w_max_ret_v2 = np.array(sol['x'])
+
+# Format output
+w_max_ret_df_v2 = pd.DataFrame(w_max_ret_v2.T, columns=assets)
+print("Maximum Return Portfolio Weights (Numerical):")
+print(w_max_ret_df_v2)
